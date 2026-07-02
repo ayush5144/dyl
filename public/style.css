@@ -12,11 +12,15 @@
   --radius: 16px;
 }
 
+html, body { height: 100%; }
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
   background: var(--bg);
   color: var(--text);
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 header {
@@ -26,6 +30,7 @@ header {
   padding: 16px 28px;
   border-bottom: 1px solid var(--border);
   background: var(--card);
+  flex-shrink: 0;
 }
 
 .brand {
@@ -103,6 +108,9 @@ main {
   padding: 24px 28px;
   max-width: 1100px;
   margin: 0 auto;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 .card {
@@ -113,7 +121,11 @@ main {
 }
 
 /* ---- Dialer ---- */
-.dialer { align-self: start; }
+.dialer {
+  align-self: start;
+  max-height: 100%;
+  overflow-y: auto;
+}
 
 .dial-row {
   display: flex;
@@ -263,7 +275,11 @@ input.invalid { border-color: var(--red); }
 .queue-item .rm { border: none; color: var(--muted); }
 
 /* ---- Panel ---- */
-.panel { display: flex; flex-direction: column; min-height: 540px; }
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 
 .tabs {
   display: flex;
@@ -288,7 +304,7 @@ input.invalid { border-color: var(--red); }
 .tab.active { background: #f1f1f1; color: var(--text); }
 .refresh { margin-left: auto; border: none; }
 
-.list { flex: 1; overflow-y: auto; }
+.list { flex: 1; overflow-y: auto; min-height: 0; }
 
 .row {
   display: flex;
@@ -500,5 +516,7 @@ input.invalid { border-color: var(--red); }
 .primary:disabled { background: #999; cursor: default; }
 
 @media (max-width: 860px) {
-  main { grid-template-columns: 1fr; }
+  main { grid-template-columns: 1fr; overflow-y: auto; }
+  .dialer { max-height: none; overflow: visible; }
+  .panel { min-height: 420px; }
 }
