@@ -296,6 +296,19 @@ function fmtTime(iso) {
     d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+/* What time it was on the other party's side when the call happened,
+   derived from their number's country (primary zone). Empty when unknown
+   or same as the caller's own time. */
+function calleeTime(number, date) {
+  const p = libphonenumber.parsePhoneNumberFromString(number || '');
+  if (!p || !p.country || !COUNTRY_TZ[p.country] || !date) return '';
+  const [tz, label] = COUNTRY_TZ[p.country][0];
+  const opts = { hour: 'numeric', minute: '2-digit' };
+  const theirs = new Date(date).toLocaleTimeString([], { ...opts, timeZone: tz });
+  if (theirs === new Date(date).toLocaleTimeString([], opts)) return '';
+  return `${flagEmoji(p.country)} ${theirs}${label ? ' ' + label : ''}`;
+}
+
 function fmtDuration(s) {
   if (!s) return '';
   const m = Math.floor(s / 60);
@@ -556,7 +569,9 @@ async function loadTab() {
         const iconCls = missed ? 'missed' : c.direction === 'inbound' ? 'in' : 'out';
         const other = c.direction === 'inbound' ? c.from : c.to;
         const sub = `${c.direction === 'inbound' ? 'Incoming' : 'Outgoing'} · ${missed ? 'missed' : c.status}${c.duration ? ' · ' + fmtDuration(c.duration) : ''}`;
-        list.appendChild(row(icon, iconCls, other, sub, fmtTime(c.startTime), () => setNumberInDialer(other)));
+        const theirs = calleeTime(other, c.startTime);
+        const meta = fmtTime(c.startTime) + (theirs ? '\n' + theirs : '');
+        list.appendChild(row(icon, iconCls, other, sub, meta, () => setNumberInDialer(other)));
       }
     } else if (state.tab === 'messages') {
       const { messages } = await api('/messages');

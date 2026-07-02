@@ -48,11 +48,12 @@ header {
 
 .header-right { display: flex; align-items: center; gap: 12px; }
 
+.header-left { display: flex; align-items: center; gap: 20px; }
+
 .clock-wrap {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-right: 8px;
 }
 .clock-line {
   font-size: 12px;
@@ -312,7 +313,14 @@ input.invalid { border-color: var(--red); }
   text-overflow: ellipsis;
   margin-top: 2px;
 }
-.row .meta { font-size: 12px; color: var(--muted); text-align: right; flex-shrink: 0; }
+.row .meta {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: right;
+  flex-shrink: 0;
+  white-space: pre-line;
+  line-height: 1.5;
+}
 
 .empty {
   color: var(--muted);
