@@ -10,6 +10,10 @@
   <header>
     <div class="brand">dyl<span class="dot" id="status-dot" title="Disconnected"></span></div>
     <div class="header-right">
+      <div class="clock-wrap">
+        <div id="clock-country"></div>
+        <span class="clock-line" id="clock-line"></span>
+      </div>
       <label class="number-select">
         <span>My number</span>
         <select id="number-select"></select>
@@ -25,7 +29,6 @@
         <input id="dial-input" type="tel" placeholder="Phone number" autocomplete="off" />
         <button class="icon-btn" id="backspace-btn" title="Delete"><i data-lucide="delete"></i></button>
       </div>
-      <p class="clock-line" id="clock-line"></p>
       <div class="pad" id="pad">
         <button data-key="1">1<span></span></button>
         <button data-key="2">2<span>ABC</span></button>

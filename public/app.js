@@ -102,7 +102,7 @@ function flagEmoji(iso) {
 /* Searchable country-code picker. Search by country name (any starting
    letters), ISO code, or dial code. allowNone adds a "no prefix" choice,
    meaning the number must be entered in full international format. */
-function countryPicker(mountId, storageKey, { allowNone = false } = {}) {
+function countryPicker(mountId, storageKey, { allowNone = false, showDial = true } = {}) {
   const mount = $(mountId);
   mount.className = 'cpicker';
   mount.innerHTML = `
@@ -129,7 +129,9 @@ function countryPicker(mountId, storageKey, { allowNone = false } = {}) {
   };
 
   function renderBtn() {
-    btn.textContent = selected ? `${flagEmoji(selected[1])} ${selected[2]}` : '🌐 —';
+    btn.textContent = selected
+      ? (showDial ? `${flagEmoji(selected[1])} ${selected[2]}` : flagEmoji(selected[1]))
+      : '🌐 —';
     btn.title = selected ? selected[0] : 'No prefix — enter full number with +';
   }
 
@@ -235,30 +237,22 @@ function validateNumber(raw, picker) {
   };
 }
 
-/* Show the callee's local time (from the typed number's country, falling
-   back to the picker) next to the caller's own time. */
+/* Navbar clock: local time of the chosen country next to the caller's own. */
 function updateClocks() {
   const line = $('clock-line');
-  let iso = state.dialCountry ? state.dialCountry.iso : null;
-  const raw = $('dial-input').value.trim();
-  if (raw) {
-    const v = validateNumber(raw, state.dialCountry);
-    if (v.ok && v.iso) iso = v.iso;
-  }
+  const iso = state.clockCountry ? state.clockCountry.iso : null;
   const opts = { hour: 'numeric', minute: '2-digit' };
   const mine = new Date().toLocaleTimeString([], opts);
   let theirs = '';
   if (iso && COUNTRY_TZ[iso]) {
     try {
       theirs =
-        flagEmoji(iso) + ' ' +
         COUNTRY_TZ[iso]
           .map(([tz, label]) =>
             new Date().toLocaleTimeString([], { ...opts, timeZone: tz }) +
             (label ? ` ${label}` : '')
           )
-          .join(' · ') +
-        '   —   ';
+          .join(' · ') + '  —  ';
     } catch {
       theirs = '';
     }
@@ -322,7 +316,6 @@ function updateDialValidity() {
     hint.classList.add('bad');
   }
   $('call-btn').disabled = !v.ok;
-  updateClocks();
   return v;
 }
 
@@ -676,7 +669,9 @@ function renderNumbers() {
 function wire() {
   state.dialCountry = countryPicker('dial-country', 'dyl-dial-country', { allowNone: true });
   state.smsCountry = countryPicker('sms-country', 'dyl-sms-country', { allowNone: true });
+  state.clockCountry = countryPicker('clock-country', 'dyl-clock-country', { showDial: false });
   state.dialCountry.onChange = updateDialValidity;
+  state.clockCountry.onChange = updateClocks;
 
   $('pad').addEventListener('click', (e) => {
     const key = e.target.closest('button')?.dataset.key;
@@ -788,6 +783,7 @@ async function init() {
   lucide.createIcons();
   renderQueue();
   updateDialValidity();
+  updateClocks();
   setInterval(updateClocks, 30000);
   state.cfg = await api('/config');
   renderNumbers();
