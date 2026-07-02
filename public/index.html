@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>dyl</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">dyl<span class="dot" id="status-dot" title="Disconnected"></span></div>
+    <div class="header-right">
+      <label class="number-select">
+        <span>My number</span>
+        <select id="number-select"></select>
+      </label>
+      <button class="icon-btn" id="settings-btn" title="Settings">⚙</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="card dialer">
+      <div class="dial-row">
+        <div id="dial-country"></div>
+        <input id="dial-input" type="tel" placeholder="Phone number" autocomplete="off" />
+        <button class="icon-btn" id="backspace-btn" title="Delete">⌫</button>
+      </div>
+      <div class="pad" id="pad">
+        <button data-key="1">1<span></span></button>
+        <button data-key="2">2<span>ABC</span></button>
+        <button data-key="3">3<span>DEF</span></button>
+        <button data-key="4">4<span>GHI</span></button>
+        <button data-key="5">5<span>JKL</span></button>
+        <button data-key="6">6<span>MNO</span></button>
+        <button data-key="7">7<span>PQRS</span></button>
+        <button data-key="8">8<span>TUV</span></button>
+        <button data-key="9">9<span>WXYZ</span></button>
+        <button data-key="*">*<span></span></button>
+        <button data-key="0">0<span>+</span></button>
+        <button data-key="#">#<span></span></button>
+      </div>
+      <button id="call-btn" class="call-btn">Call</button>
+      <p class="hint" id="dial-hint"></p>
+      <div class="queue-head">
+        <span>Queue</span>
+        <button id="queue-add" class="ghost">+ Add number</button>
+      </div>
+      <div id="queue" class="queue"></div>
+    </section>
+
+    <section class="card panel">
+      <nav class="tabs">
+        <button class="tab active" data-tab="recents">Recents</button>
+        <button class="tab" data-tab="messages">Messages</button>
+        <button class="tab" data-tab="leads">Leads</button>
+        <button class="icon-btn refresh" id="refresh-btn" title="Refresh">↻</button>
+      </nav>
+      <div id="list" class="list"></div>
+      <div id="composer" class="composer hidden">
+        <div id="sms-country"></div>
+        <input id="sms-to" type="tel" placeholder="Phone number" />
+        <input id="sms-body" type="text" placeholder="Message…" />
+        <button id="sms-send">Send</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- In-call / incoming overlay -->
+  <div id="overlay" class="overlay hidden">
+    <div class="call-card">
+      <div class="call-number" id="call-number"></div>
+      <div class="call-status" id="call-status">Calling…</div>
+      <div class="mini-pad hidden" id="mini-pad">
+        <button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button>
+        <button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button>
+        <button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button>
+        <button data-key="*">*</button><button data-key="0">0</button><button data-key="#">#</button>
+      </div>
+      <div class="call-actions" id="active-actions">
+        <button id="mute-btn" class="round-btn" title="Mute">🎙</button>
+        <button id="keypad-btn" class="round-btn" title="Keypad">⌨</button>
+        <button id="hangup-btn" class="round-btn danger" title="Hang up">✕</button>
+      </div>
+      <div class="call-actions hidden" id="incoming-actions">
+        <button id="accept-btn" class="round-btn accept" title="Accept">✓</button>
+        <button id="reject-btn" class="round-btn danger" title="Decline">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings modal -->
+  <div id="settings-modal" class="overlay hidden">
+    <div class="modal">
+      <h2>Settings</h2>
+      <label>Twilio Account SID
+        <input id="cfg-sid" type="text" placeholder="AC…" autocomplete="off" />
+      </label>
+      <label>Twilio Auth Token
+        <input id="cfg-token" type="password" placeholder="Auth token" autocomplete="off" />
+      </label>
+      <label>Google Sheet URL (leads)
+        <input id="cfg-sheet" type="text" placeholder="https://docs.google.com/spreadsheets/d/…" />
+      </label>
+      <p class="hint">The sheet must be shared as “Anyone with the link can view”. First row = column headers; include a phone column.</p>
+      <label class="check">
+        <input type="checkbox" id="cfg-incoming" />
+        Ring incoming calls in this browser <span class="hint">(points your number’s voice webhook at dyl)</span>
+      </label>
+      <div class="modal-actions">
+        <span id="cfg-status" class="hint"></span>
+        <button id="cfg-save" class="primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/vendor/twilio.min.js"></script>
+  <script src="/vendor/libphonenumber.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
