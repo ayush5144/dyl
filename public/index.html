@@ -14,7 +14,7 @@
         <span>My number</span>
         <select id="number-select"></select>
       </label>
-      <button class="icon-btn" id="settings-btn" title="Settings">⚙</button>
+      <button class="icon-btn" id="settings-btn" title="Settings"><i data-lucide="settings"></i></button>
     </div>
   </header>
 
@@ -23,8 +23,9 @@
       <div class="dial-row">
         <div id="dial-country"></div>
         <input id="dial-input" type="tel" placeholder="Phone number" autocomplete="off" />
-        <button class="icon-btn" id="backspace-btn" title="Delete">⌫</button>
+        <button class="icon-btn" id="backspace-btn" title="Delete"><i data-lucide="delete"></i></button>
       </div>
+      <p class="clock-line" id="clock-line"></p>
       <div class="pad" id="pad">
         <button data-key="1">1<span></span></button>
         <button data-key="2">2<span>ABC</span></button>
@@ -53,7 +54,7 @@
         <button class="tab active" data-tab="recents">Recents</button>
         <button class="tab" data-tab="messages">Messages</button>
         <button class="tab" data-tab="leads">Leads</button>
-        <button class="icon-btn refresh" id="refresh-btn" title="Refresh">↻</button>
+        <button class="icon-btn refresh" id="refresh-btn" title="Refresh"><i data-lucide="refresh-cw"></i></button>
       </nav>
       <div id="list" class="list"></div>
       <div id="composer" class="composer hidden">
@@ -76,14 +77,37 @@
         <button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button>
         <button data-key="*">*</button><button data-key="0">0</button><button data-key="#">#</button>
       </div>
+      <div class="speaker-menu hidden" id="speaker-menu"></div>
       <div class="call-actions" id="active-actions">
-        <button id="mute-btn" class="round-btn" title="Mute">🎙</button>
-        <button id="keypad-btn" class="round-btn" title="Keypad">⌨</button>
-        <button id="hangup-btn" class="round-btn danger" title="Hang up">✕</button>
+        <div class="action">
+          <button id="speaker-btn" class="round-btn" title="Audio output"><i data-lucide="volume-2"></i></button>
+          <span>Speaker</span>
+        </div>
+        <div class="action">
+          <button id="mute-btn" class="round-btn" title="Mute">
+            <span class="ic-on"><i data-lucide="mic"></i></span>
+            <span class="ic-off"><i data-lucide="mic-off"></i></span>
+          </button>
+          <span>Mute</span>
+        </div>
+        <div class="action">
+          <button id="keypad-btn" class="round-btn" title="Keypad"><i data-lucide="grip"></i></button>
+          <span>Keypad</span>
+        </div>
+        <div class="action">
+          <button id="hangup-btn" class="round-btn danger" title="End call"><i data-lucide="phone-off"></i></button>
+          <span>End</span>
+        </div>
       </div>
       <div class="call-actions hidden" id="incoming-actions">
-        <button id="accept-btn" class="round-btn accept" title="Accept">✓</button>
-        <button id="reject-btn" class="round-btn danger" title="Decline">✕</button>
+        <div class="action">
+          <button id="accept-btn" class="round-btn accept" title="Accept"><i data-lucide="phone"></i></button>
+          <span>Accept</span>
+        </div>
+        <div class="action">
+          <button id="reject-btn" class="round-btn danger" title="Decline"><i data-lucide="phone-off"></i></button>
+          <span>Decline</span>
+        </div>
       </div>
     </div>
   </div>
@@ -115,6 +139,7 @@
 
   <script src="/vendor/twilio.min.js"></script>
   <script src="/vendor/libphonenumber.min.js"></script>
+  <script src="/vendor/lucide.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

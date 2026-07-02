@@ -75,8 +75,12 @@ select:focus, input:focus { border-color: #bdbdbd; }
   font-size: 15px;
   cursor: pointer;
   color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .icon-btn:hover { background: #f3f3f3; }
+.icon-btn svg { width: 16px; height: 16px; stroke-width: 1.75; }
 
 main {
   display: grid;
@@ -100,7 +104,14 @@ main {
 .dial-row {
   display: flex;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 6px;
+}
+
+.clock-line {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 2px 14px;
+  white-space: pre;
 }
 #dial-input {
   flex: 1;
@@ -365,21 +376,72 @@ input.invalid { border-color: var(--red); }
 .call-actions {
   display: flex;
   justify-content: center;
-  gap: 18px;
+  gap: 22px;
   margin-top: 28px;
 }
+.action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+.action > span { font-size: 11px; color: var(--muted); }
 .round-btn {
   width: 56px;
   height: 56px;
   border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--card);
-  font-size: 20px;
+  color: var(--text);
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+.round-btn:hover { background: #f3f3f3; }
+.round-btn svg { width: 21px; height: 21px; stroke-width: 1.75; }
 .round-btn.danger { background: var(--red); border-color: var(--red); color: #fff; }
+.round-btn.danger:hover { background: var(--red); filter: brightness(1.08); }
 .round-btn.accept { background: var(--green); border-color: var(--green); color: #fff; }
+.round-btn.accept:hover { background: var(--green); filter: brightness(1.08); }
 .round-btn.active { background: #111; color: #fff; border-color: #111; }
+.round-btn.active:hover { background: #111; }
+
+/* Mute button swaps mic → mic-off when active */
+.round-btn .ic-on, .round-btn .ic-off { display: flex; }
+#mute-btn .ic-off { display: none; }
+#mute-btn.active .ic-on { display: none; }
+#mute-btn.active .ic-off { display: flex; }
+
+/* Speaker (audio output) menu */
+.speaker-menu {
+  margin-top: 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 6px;
+  text-align: left;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.speaker-item {
+  display: block;
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: 9px 12px;
+  border-radius: 9px;
+  cursor: pointer;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.speaker-item:hover { background: #f3f3f3; }
+.speaker-item.selected { background: #f1f1f1; font-weight: 600; }
+.speaker-note { padding: 12px; font-size: 12px; color: var(--muted); }
 
 /* ---- Settings modal ---- */
 .modal {

@@ -112,6 +112,10 @@ app.get('/vendor/libphonenumber.min.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'node_modules/libphonenumber-js/bundle/libphonenumber-js.min.js'));
 });
 
+app.get('/vendor/lucide.min.js', (req, res) => {
+  res.sendFile(path.join(__dirname, 'node_modules/lucide/dist/umd/lucide.min.js'));
+});
+
 const wrap = (fn) => (req, res) =>
   fn(req, res).catch((err) => {
     console.error(err);

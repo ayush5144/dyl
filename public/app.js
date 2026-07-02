@@ -44,6 +44,55 @@ const COUNTRIES = [
   ['Yemen', 'YE', '+967'], ['Zambia', 'ZM', '+260'], ['Zimbabwe', 'ZW', '+263']
 ];
 
+/* Representative IANA timezone(s) per country, for the "their local time"
+   readout. Multi-timezone countries get their main business zones. */
+const COUNTRY_TZ = {
+  AF: [['Asia/Kabul']], AL: [['Europe/Tirane']], DZ: [['Africa/Algiers']],
+  AR: [['America/Argentina/Buenos_Aires']], AM: [['Asia/Yerevan']],
+  AU: [['Australia/Sydney', 'Sydney'], ['Australia/Perth', 'Perth']],
+  AT: [['Europe/Vienna']], AZ: [['Asia/Baku']], BH: [['Asia/Bahrain']],
+  BD: [['Asia/Dhaka']], BY: [['Europe/Minsk']], BE: [['Europe/Brussels']],
+  BO: [['America/La_Paz']], BA: [['Europe/Sarajevo']], BW: [['Africa/Gaborone']],
+  BR: [['America/Sao_Paulo']], BG: [['Europe/Sofia']], KH: [['Asia/Phnom_Penh']],
+  CM: [['Africa/Douala']],
+  CA: [['America/Toronto', 'ET'], ['America/Vancouver', 'PT']],
+  CL: [['America/Santiago']], CN: [['Asia/Shanghai']], CO: [['America/Bogota']],
+  CR: [['America/Costa_Rica']], HR: [['Europe/Zagreb']], CY: [['Asia/Nicosia']],
+  CZ: [['Europe/Prague']], DK: [['Europe/Copenhagen']], DO: [['America/Santo_Domingo']],
+  EC: [['America/Guayaquil']], EG: [['Africa/Cairo']], SV: [['America/El_Salvador']],
+  EE: [['Europe/Tallinn']], ET: [['Africa/Addis_Ababa']], FI: [['Europe/Helsinki']],
+  FR: [['Europe/Paris']], GE: [['Asia/Tbilisi']], DE: [['Europe/Berlin']],
+  GH: [['Africa/Accra']], GR: [['Europe/Athens']], GT: [['America/Guatemala']],
+  HN: [['America/Tegucigalpa']], HK: [['Asia/Hong_Kong']], HU: [['Europe/Budapest']],
+  IS: [['Atlantic/Reykjavik']], IN: [['Asia/Kolkata']], ID: [['Asia/Jakarta']],
+  IQ: [['Asia/Baghdad']], IE: [['Europe/Dublin']], IL: [['Asia/Jerusalem']],
+  IT: [['Europe/Rome']], JM: [['America/Jamaica']], JP: [['Asia/Tokyo']],
+  JO: [['Asia/Amman']], KZ: [['Asia/Almaty']], KE: [['Africa/Nairobi']],
+  KW: [['Asia/Kuwait']], LA: [['Asia/Vientiane']], LV: [['Europe/Riga']],
+  LB: [['Asia/Beirut']], LT: [['Europe/Vilnius']], LU: [['Europe/Luxembourg']],
+  MO: [['Asia/Macau']], MY: [['Asia/Kuala_Lumpur']], MV: [['Indian/Maldives']],
+  MT: [['Europe/Malta']], MX: [['America/Mexico_City']], MD: [['Europe/Chisinau']],
+  MC: [['Europe/Monaco']], MN: [['Asia/Ulaanbaatar']], MA: [['Africa/Casablanca']],
+  MM: [['Asia/Yangon']], NP: [['Asia/Kathmandu']], NL: [['Europe/Amsterdam']],
+  NZ: [['Pacific/Auckland']], NI: [['America/Managua']], NG: [['Africa/Lagos']],
+  MK: [['Europe/Skopje']], NO: [['Europe/Oslo']], OM: [['Asia/Muscat']],
+  PK: [['Asia/Karachi']], PA: [['America/Panama']], PY: [['America/Asuncion']],
+  PE: [['America/Lima']], PH: [['Asia/Manila']], PL: [['Europe/Warsaw']],
+  PT: [['Europe/Lisbon']], QA: [['Asia/Qatar']], RO: [['Europe/Bucharest']],
+  RU: [['Europe/Moscow', 'Moscow']], RW: [['Africa/Kigali']], SA: [['Asia/Riyadh']],
+  SN: [['Africa/Dakar']], RS: [['Europe/Belgrade']], SG: [['Asia/Singapore']],
+  SK: [['Europe/Bratislava']], SI: [['Europe/Ljubljana']], ZA: [['Africa/Johannesburg']],
+  KR: [['Asia/Seoul']], ES: [['Europe/Madrid']], LK: [['Asia/Colombo']],
+  SE: [['Europe/Stockholm']], CH: [['Europe/Zurich']], TW: [['Asia/Taipei']],
+  TZ: [['Africa/Dar_es_Salaam']], TH: [['Asia/Bangkok']], TN: [['Africa/Tunis']],
+  TR: [['Europe/Istanbul']], UG: [['Africa/Kampala']], UA: [['Europe/Kiev']],
+  AE: [['Asia/Dubai']], GB: [['Europe/London']],
+  US: [['America/New_York', 'ET'], ['America/Chicago', 'CT'], ['America/Los_Angeles', 'PT']],
+  UY: [['America/Montevideo']], UZ: [['Asia/Tashkent']], VE: [['America/Caracas']],
+  VN: [['Asia/Ho_Chi_Minh']], YE: [['Asia/Aden']], ZM: [['Africa/Lusaka']],
+  ZW: [['Africa/Harare']]
+};
+
 const $ = (id) => document.getElementById(id);
 
 function flagEmoji(iso) {
@@ -178,7 +227,43 @@ function validateNumber(raw, picker) {
     return { ok: false, full, reason: 'Invalid number' };
   }
   const country = COUNTRIES.find((c) => c[1] === parsed.country);
-  return { ok: true, full: parsed.number, country: country ? country[0] : parsed.country };
+  return {
+    ok: true,
+    full: parsed.number,
+    iso: parsed.country,
+    country: country ? country[0] : parsed.country
+  };
+}
+
+/* Show the callee's local time (from the typed number's country, falling
+   back to the picker) next to the caller's own time. */
+function updateClocks() {
+  const line = $('clock-line');
+  let iso = state.dialCountry ? state.dialCountry.iso : null;
+  const raw = $('dial-input').value.trim();
+  if (raw) {
+    const v = validateNumber(raw, state.dialCountry);
+    if (v.ok && v.iso) iso = v.iso;
+  }
+  const opts = { hour: 'numeric', minute: '2-digit' };
+  const mine = new Date().toLocaleTimeString([], opts);
+  let theirs = '';
+  if (iso && COUNTRY_TZ[iso]) {
+    try {
+      theirs =
+        flagEmoji(iso) + ' ' +
+        COUNTRY_TZ[iso]
+          .map(([tz, label]) =>
+            new Date().toLocaleTimeString([], { ...opts, timeZone: tz }) +
+            (label ? ` ${label}` : '')
+          )
+          .join(' · ') +
+        '   —   ';
+    } catch {
+      theirs = '';
+    }
+  }
+  line.textContent = `${theirs}You ${mine}`;
 }
 
 const state = {
@@ -237,6 +322,7 @@ function updateDialValidity() {
     hint.classList.add('bad');
   }
   $('call-btn').disabled = !v.ok;
+  updateClocks();
   return v;
 }
 
@@ -301,7 +387,50 @@ function showOverlay(number, status, mode) {
   $('active-actions').classList.toggle('hidden', mode === 'incoming');
   $('incoming-actions').classList.toggle('hidden', mode !== 'incoming');
   $('mini-pad').classList.add('hidden');
+  $('speaker-menu').classList.add('hidden');
+  $('keypad-btn').classList.remove('active');
   $('overlay').classList.remove('hidden');
+}
+
+/* Audio output ("speaker") picker for the active call. Lists the machine's
+   output devices via Twilio's AudioHelper; picking one routes call audio
+   there (e.g. built-in speakers vs headphones). */
+async function toggleSpeakerMenu() {
+  const menu = $('speaker-menu');
+  if (!menu.classList.contains('hidden')) {
+    menu.classList.add('hidden');
+    $('speaker-btn').classList.remove('active');
+    return;
+  }
+  const audio = state.device && state.device.audio;
+  menu.innerHTML = '';
+  if (!audio || !audio.isOutputSelectionSupported) {
+    const note = document.createElement('div');
+    note.className = 'speaker-note';
+    note.textContent = 'Audio output selection is not supported in this browser — use Chrome.';
+    menu.appendChild(note);
+  } else {
+    const active = new Set([...audio.speakerDevices.get()].map((d) => d.deviceId));
+    audio.availableOutputDevices.forEach((dev, id) => {
+      const item = document.createElement('button');
+      item.className = 'speaker-item' + (active.has(id) ? ' selected' : '');
+      item.textContent = dev.label || 'Audio output';
+      item.addEventListener('click', async () => {
+        try {
+          await audio.speakerDevices.set(id);
+        } catch (e) {
+          toast('Could not switch output: ' + e.message);
+        }
+        menu.classList.add('hidden');
+        $('speaker-btn').classList.remove('active');
+      });
+      menu.appendChild(item);
+    });
+  }
+  $('mini-pad').classList.add('hidden');
+  $('keypad-btn').classList.remove('active');
+  menu.classList.remove('hidden');
+  $('speaker-btn').classList.add('active');
 }
 
 function startTimer() {
@@ -584,7 +713,13 @@ function wire() {
     state.call.mute(state.muted);
     $('mute-btn').classList.toggle('active', state.muted);
   });
-  $('keypad-btn').addEventListener('click', () => $('mini-pad').classList.toggle('hidden'));
+  $('keypad-btn').addEventListener('click', () => {
+    const shown = $('mini-pad').classList.toggle('hidden');
+    $('keypad-btn').classList.toggle('active', !shown);
+    $('speaker-menu').classList.add('hidden');
+    $('speaker-btn').classList.remove('active');
+  });
+  $('speaker-btn').addEventListener('click', toggleSpeakerMenu);
   $('accept-btn').addEventListener('click', () => {
     if (!state.call) return;
     state.call.accept();
@@ -650,8 +785,10 @@ function wire() {
 
 async function init() {
   wire();
+  lucide.createIcons();
   renderQueue();
   updateDialValidity();
+  setInterval(updateClocks, 30000);
   state.cfg = await api('/config');
   renderNumbers();
   if (!state.cfg.configured) {
