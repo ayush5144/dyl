@@ -283,6 +283,24 @@ input.invalid { border-color: var(--red); }
   min-width: 0;
 }
 
+.searchbar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 2px 6px 12px;
+}
+.searchbar > svg { width: 15px; height: 15px; color: var(--muted); flex-shrink: 0; }
+.searchbar input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 4px 0;
+  font-size: 14px;
+}
+#search-clear { border: none; padding: 4px 6px; }
+
 .tabs {
   display: flex;
   gap: 4px;

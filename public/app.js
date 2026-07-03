@@ -374,6 +374,7 @@ async function initDevice() {
   device.on('error', (e) => {
     console.error('Device error', e);
     toast('Twilio error: ' + (e.message || e.code));
+    setTimeout(ensureRegistered, 3000);
   });
   device.on('tokenWillExpire', async () => {
     const { token } = await api('/token');
@@ -389,6 +390,21 @@ async function initDevice() {
 
   await device.register();
   state.device = device;
+}
+
+/* Keep the device registered so incoming calls always ring: tokens expire
+   hourly and laptop sleep kills the connection silently. Re-register
+   whenever we notice the device dropped. */
+async function ensureRegistered() {
+  const d = state.device;
+  if (!d || state.call || d.state === 'registered' || d.state === 'registering') return;
+  try {
+    const { token } = await api('/token');
+    d.updateToken(token);
+    await d.register();
+  } catch (e) {
+    console.error('re-register failed', e);
+  }
 }
 
 /* ---------- Call UI ---------- */
@@ -1005,6 +1021,55 @@ async function loadTab() {
   }
 }
 
+/* ---------- Search ---------- */
+
+/* Search leads by name/company/title or by number (paste a number anywhere
+   to see whose it is — works from any tab). */
+async function runSearch() {
+  const q = $('search-input').value.trim();
+  $('search-clear').classList.toggle('hidden', !q);
+  if (!q) return loadTab();
+  const list = $('list');
+  $('composer').classList.add('hidden');
+  if (!state.leads.length) {
+    list.innerHTML = '<div class="empty">Loading leads…</div>';
+    try {
+      await fetchLeads();
+    } catch (e) {
+      list.innerHTML = '';
+      const div = document.createElement('div');
+      div.className = 'empty';
+      div.textContent = e.message;
+      list.appendChild(div);
+      return;
+    }
+    if ($('search-input').value.trim() !== q) return; // query changed meanwhile
+  }
+  const ql = q.toLowerCase();
+  const qDigits = q.replace(/\D/g, '').replace(/^0+/, '');
+  const matches = state.leads.filter((l) => {
+    const leadDigits = (l.phone || '').replace(/\D/g, '');
+    if (qDigits.length >= 5 && leadDigits.includes(qDigits)) return true;
+    return [l.name, l.company, l.title, l.phone].some(
+      (v) => v && v.toLowerCase().includes(ql)
+    );
+  });
+  list.innerHTML = '';
+  state.leadBlocks = new Map();
+  if (!matches.length) {
+    const div = document.createElement('div');
+    div.className = 'empty';
+    div.textContent =
+      qDigits.length >= 6
+        ? 'This number is not in your leads — after calling it you can add it from the outcome popup.'
+        : 'No leads match.';
+    list.appendChild(div);
+    return;
+  }
+  for (const lead of matches) list.appendChild(buildLeadBlock(lead));
+  lucide.createIcons();
+}
+
 /* ---------- Settings ---------- */
 
 async function openSettings() {
@@ -1148,10 +1213,23 @@ function wire() {
       document.querySelectorAll('.tab').forEach((x) => x.classList.remove('active'));
       t.classList.add('active');
       state.tab = t.dataset.tab;
+      $('search-input').value = '';
+      $('search-clear').classList.add('hidden');
       loadTab();
     })
   );
   $('refresh-btn').addEventListener('click', loadTab);
+
+  let searchTimer = null;
+  $('search-input').addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(runSearch, 250);
+  });
+  $('search-clear').addEventListener('click', () => {
+    $('search-input').value = '';
+    $('search-clear').classList.add('hidden');
+    loadTab();
+  });
 
   $('outcome-chips').addEventListener('click', (e) => {
     const btn = e.target.closest('button');
@@ -1215,6 +1293,10 @@ async function init() {
   updateDialValidity();
   updateClocks();
   setInterval(updateClocks, 30000);
+  setInterval(ensureRegistered, 20000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) ensureRegistered();
+  });
   state.cfg = await api('/config');
   renderNumbers();
   if (!state.cfg.configured) {

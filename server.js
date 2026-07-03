@@ -213,6 +213,17 @@ app.post(
     const found = (cfg.numbers || []).find((n) => n.phoneNumber === req.body.number);
     if (!found) return res.status(400).json({ error: 'Unknown number' });
     cfg.number = found.phoneNumber;
+    // Incoming routing follows the active number so calls keep ringing here
+    if (cfg.incomingEnabled && cfg.domainName) {
+      const client = getClient(cfg);
+      const incomingUrl = `https://${cfg.domainName}/incoming`;
+      const current = await client.incomingPhoneNumbers(found.sid).fetch();
+      if (current.voiceUrl !== incomingUrl) {
+        cfg.prevVoiceUrls = cfg.prevVoiceUrls || {};
+        if (current.voiceUrl) cfg.prevVoiceUrls[found.sid] = current.voiceUrl;
+        await client.incomingPhoneNumbers(found.sid).update({ voiceUrl: incomingUrl, voiceMethod: 'POST' });
+      }
+    }
     saveConfig(cfg);
     res.json({ number: cfg.number });
   })
