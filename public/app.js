@@ -570,15 +570,17 @@ async function dialNextLead() {
 
 function startAutoDial() {
   state.autoDial = true;
-  $('autodial-btn').textContent = '■ Stop auto-dial';
+  $('autodial-btn').innerHTML = '<i data-lucide="square"></i>Stop auto-dial';
   $('autodial-btn').classList.add('running');
+  lucide.createIcons();
   dialNextLead();
 }
 
 function stopAutoDial() {
   state.autoDial = false;
-  $('autodial-btn').textContent = '▸ Auto-dial';
+  $('autodial-btn').innerHTML = '<i data-lucide="play"></i>Auto-dial';
   $('autodial-btn').classList.remove('running');
+  lucide.createIcons();
 }
 
 /* Normalize sheet rows into lead objects using detected column names. */

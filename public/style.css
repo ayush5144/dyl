@@ -358,7 +358,12 @@ input.invalid { border-color: var(--red); }
   margin-left: auto;
   font-weight: 600;
   border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
 }
+.autodial svg { width: 13px; height: 13px; stroke-width: 2; }
 .autodial.running { background: #111; color: #fff; border-color: #111; }
 .autodial.running:hover { background: #111; }
 .tabs .refresh { margin-left: 4px; }
