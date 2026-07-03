@@ -59,6 +59,7 @@
         <button class="tab active" data-tab="recents">Recents</button>
         <button class="tab" data-tab="messages">Messages</button>
         <button class="tab" data-tab="leads">Leads</button>
+        <button id="autodial-btn" class="ghost autodial hidden">▸ Auto-dial</button>
         <button class="icon-btn refresh" id="refresh-btn" title="Refresh"><i data-lucide="refresh-cw"></i></button>
       </nav>
       <div id="list" class="list"></div>
@@ -75,7 +76,26 @@
   <div id="overlay" class="overlay hidden">
     <div class="call-card">
       <div class="call-number" id="call-number"></div>
+      <div class="call-sub" id="call-sub"></div>
       <div class="call-status" id="call-status">Calling…</div>
+      <div class="lead-context hidden" id="lead-context">
+        <p class="lead-opener hidden" id="lead-opener"></p>
+        <textarea id="call-notes" placeholder="Notes…" rows="3"></textarea>
+      </div>
+      <div class="outcome hidden" id="outcome-box">
+        <div class="chips" id="outcome-chips">
+          <button data-outcome="Interested">Interested</button>
+          <button data-outcome="Callback">Callback</button>
+          <button data-outcome="No Answer">No Answer</button>
+          <button data-outcome="Voicemail">Voicemail</button>
+          <button data-outcome="Not Interested">Not Interested</button>
+          <button data-outcome="Wrong Number">Wrong Number</button>
+        </div>
+        <div class="outcome-actions">
+          <button class="ghost" id="outcome-skip">Skip</button>
+          <button class="primary" id="outcome-save">Save</button>
+        </div>
+      </div>
       <div class="mini-pad hidden" id="mini-pad">
         <button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button>
         <button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button>
@@ -127,10 +147,14 @@
       <label>Twilio Auth Token
         <input id="cfg-token" type="password" placeholder="Auth token" autocomplete="off" />
       </label>
-      <label>Google Sheet URL (leads)
+      <label>Apps Script URL (leads — read &amp; write)
+        <input id="cfg-appsscript" type="text" placeholder="https://script.google.com/macros/s/…/exec" />
+      </label>
+      <p class="hint">Enables two-way sync: statuses, outcomes and notes are written back to your sheet. See appsscript/Code.gs in the repo for the script + deploy steps.</p>
+      <label>Google Sheet URL (leads — read-only fallback)
         <input id="cfg-sheet" type="text" placeholder="https://docs.google.com/spreadsheets/d/…" />
       </label>
-      <p class="hint">The sheet must be shared as “Anyone with the link can view”. First row = column headers; include a phone column.</p>
+      <p class="hint">Only needed if you don’t use the Apps Script. Share as “Anyone with the link can view”; include a phone column.</p>
       <label class="check">
         <input type="checkbox" id="cfg-incoming" />
         Ring incoming calls in this browser <span class="hint">(points your number’s voice webhook at dyl)</span>

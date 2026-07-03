@@ -47,11 +47,30 @@ It also creates an API key and a TwiML app, all automatically and idempotently. 
 
 ## Leads from Google Sheets
 
-Paste your sheet URL in settings. Requirements:
+Two ways to connect, set in settings:
+
+### Apps Script URL (recommended — two-way sync)
+
+Read *and* write: call outcomes, notes, status, and last-called timestamps are written
+back to your sheet. Also powers **auto-dial** (dial pending leads one after another,
+log each outcome between calls) and shows each lead's opener script during the call.
+
+Setup (one time, ~2 minutes):
+
+1. Open your leads Google Sheet → **Extensions → Apps Script**
+2. Delete the placeholder code and paste in [`appsscript/Code.gs`](appsscript/Code.gs)
+3. **Deploy → New deployment** → gear icon → **Web app**
+4. Set *Execute as: Me* and *Who has access: **Anyone*** → **Deploy** → authorize when asked
+5. Copy the Web app URL (ends in `/exec`) and paste it into dyl's settings
+
+Header rows are auto-detected (title banners above the table are fine). Missing
+workflow columns (Status / Outcome / Notes / Last Called) are created automatically.
+
+### Sheet URL (read-only fallback)
 
 - Share the sheet as **"Anyone with the link can view"**
-- First row = headers, with a phone column (any header matching phone/mobile/number/contact)
-- A name column is picked up automatically; other columns show as detail text
+- Needs a phone column (any header matching phone/mobile/number/contact)
+- No write-back: statuses and notes can't be saved
 
 ## Incoming calls
 

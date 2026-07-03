@@ -35,6 +35,7 @@ function publicConfig(cfg) {
     number: cfg.number || null,
     numbers: cfg.numbers || [],
     sheetUrl: cfg.sheetUrl || '',
+    appsScriptUrl: cfg.appsScriptUrl || '',
     incomingEnabled: !!cfg.incomingEnabled,
     identity: CLIENT_IDENTITY
   };
@@ -140,6 +141,7 @@ app.post(
     cfg.accountSid = accountSid.trim();
     cfg.authToken = authToken.trim();
     if (sheetUrl !== undefined) cfg.sheetUrl = sheetUrl.trim();
+    if (req.body.appsScriptUrl !== undefined) cfg.appsScriptUrl = req.body.appsScriptUrl.trim();
     await ensureSetup(cfg);
     await refreshNumbers(cfg);
     saveConfig(cfg);
@@ -152,6 +154,7 @@ app.post(
   wrap(async (req, res) => {
     const cfg = loadConfig();
     if (req.body.sheetUrl !== undefined) cfg.sheetUrl = req.body.sheetUrl.trim();
+    if (req.body.appsScriptUrl !== undefined) cfg.appsScriptUrl = req.body.appsScriptUrl.trim();
     saveConfig(cfg);
     res.json(publicConfig(cfg));
   })
@@ -291,7 +294,17 @@ app.get(
   '/api/leads',
   wrap(async (req, res) => {
     const cfg = loadConfig();
-    if (!cfg.sheetUrl) return res.json({ leads: [], headers: [] });
+    if (cfg.appsScriptUrl) {
+      const r = await fetch(cfg.appsScriptUrl, { redirect: 'follow' });
+      const text = await r.text();
+      if (text.trimStart().startsWith('<')) {
+        throw new Error('Apps Script URL did not return JSON — redeploy with access set to "Anyone".');
+      }
+      const data = JSON.parse(text);
+      if (data.error) throw new Error(data.error);
+      return res.json({ leads: data.leads, headers: data.headers, writable: true });
+    }
+    if (!cfg.sheetUrl) return res.json({ leads: [], headers: [], writable: false });
     const r = await fetch(toCsvUrl(cfg.sheetUrl), { redirect: 'follow' });
     if (!r.ok) throw new Error(`Could not fetch sheet (${r.status}). Is it shared as "Anyone with the link"?`);
     const text = await r.text();
@@ -299,14 +312,46 @@ app.get(
       throw new Error('Sheet is not public. Share it as "Anyone with the link can view".');
     }
     const rows = parseCsv(text).filter((r) => r.some((c) => c.trim() !== ''));
-    if (!rows.length) return res.json({ leads: [], headers: [] });
-    const headers = rows[0].map((h) => h.trim());
-    const leads = rows.slice(1).map((r) => {
+    if (!rows.length) return res.json({ leads: [], headers: [], writable: false });
+    // Skip any title/banner rows: the header row is the one with a "Name" cell.
+    let hi = rows.findIndex((r) => r.some((c) => /^name$/i.test(c.trim())));
+    if (hi === -1) hi = 0;
+    const headers = rows[hi].map((h) => h.trim());
+    const leads = rows.slice(hi + 1).map((r) => {
       const obj = {};
-      headers.forEach((h, i) => (obj[h] = (r[i] || '').trim()));
+      headers.forEach((h, i) => {
+        if (h) obj[h] = (r[i] || '').trim();
+      });
       return obj;
     });
-    res.json({ leads, headers });
+    res.json({ leads, headers: headers.filter(Boolean), writable: false });
+  })
+);
+
+app.post(
+  '/api/lead-update',
+  wrap(async (req, res) => {
+    const cfg = loadConfig();
+    if (!cfg.appsScriptUrl) {
+      return res.status(400).json({ error: 'Lead updates need the Apps Script connection (see settings)' });
+    }
+    const { row, updates } = req.body;
+    if (!row || !updates || typeof updates !== 'object') {
+      return res.status(400).json({ error: 'row and updates are required' });
+    }
+    const r = await fetch(cfg.appsScriptUrl, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ row, updates })
+    });
+    const text = await r.text();
+    if (text.trimStart().startsWith('<')) {
+      throw new Error('Apps Script rejected the update — redeploy with access set to "Anyone".');
+    }
+    const data = JSON.parse(text);
+    if (data.error) throw new Error(data.error);
+    res.json({ ok: true });
   })
 );
 
