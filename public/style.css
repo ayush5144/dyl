@@ -125,6 +125,7 @@ main {
   align-self: start;
   max-height: 100%;
   overflow-y: auto;
+  min-width: 0;
 }
 
 .dial-row {
@@ -279,6 +280,7 @@ input.invalid { border-color: var(--red); }
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
 }
 
 .tabs {
@@ -304,7 +306,7 @@ input.invalid { border-color: var(--red); }
 .tab.active { background: #f1f1f1; color: var(--text); }
 .refresh { margin-left: auto; border: none; }
 
-.list { flex: 1; overflow-y: auto; min-height: 0; }
+.list { flex: 1; overflow-y: auto; overflow-x: hidden; min-height: 0; }
 
 .row {
   display: flex;
@@ -368,10 +370,11 @@ input.invalid { border-color: var(--red); }
   grid-template-columns: 1fr 1fr;
   gap: 8px 20px;
   margin-bottom: 14px;
+  overflow-x: auto;
 }
 .lead-fields .field { min-width: 0; font-size: 12.5px; display: flex; flex-direction: column; gap: 1px; }
 .lead-fields .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-.lead-fields .v { overflow-wrap: break-word; line-height: 1.45; }
+.lead-fields .v { overflow-wrap: anywhere; line-height: 1.45; }
 .lead-fields a { color: #2563eb; text-decoration: none; }
 .lead-fields a:hover { text-decoration: underline; }
 
@@ -473,6 +476,34 @@ input.invalid { border-color: var(--red); }
   z-index: 50;
 }
 .hidden { display: none !important; }
+
+/* Docked mode: active calls sit in the corner so the app stays usable —
+   browse leads, take notes, switch tabs while talking. */
+.overlay.docked {
+  background: none;
+  pointer-events: none;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 20px;
+}
+.overlay.docked .call-card {
+  pointer-events: auto;
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  padding: 18px 22px;
+  min-width: 240px;
+  border-radius: 18px;
+}
+.overlay.docked .call-number { font-size: 16px; }
+.overlay.docked .call-sub { font-size: 12px; }
+.overlay.docked .call-status { font-size: 13px; margin-top: 4px; }
+.overlay.docked .call-actions { margin-top: 14px; gap: 12px; }
+.overlay.docked .round-btn { width: 42px; height: 42px; }
+.overlay.docked .round-btn svg { width: 17px; height: 17px; }
+.overlay.docked .action > span { display: none; }
+.overlay.docked .mini-pad { margin-top: 12px; gap: 6px; }
+.overlay.docked .mini-pad button { padding: 7px 0; font-size: 14px; }
+.overlay.docked .speaker-menu { margin-top: 12px; max-width: 260px; }
 
 .call-card {
   background: var(--card);

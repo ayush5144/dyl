@@ -399,21 +399,17 @@ function showOverlay(number, status, mode) {
   $('active-actions').classList.toggle('hidden', mode === 'incoming');
   $('incoming-actions').classList.toggle('hidden', mode !== 'incoming');
   $('outcome-box').classList.add('hidden');
+  $('lead-context').classList.add('hidden');
   $('mini-pad').classList.add('hidden');
   $('speaker-menu').classList.add('hidden');
   $('keypad-btn').classList.remove('active');
-  // Lead calls get the opener script + a live notes box in the call window
   const lead = mode !== 'incoming' && state.activeLead;
   $('call-sub').textContent = lead
     ? [lead.title, lead.company].filter(Boolean).join(' · ')
     : '';
-  $('lead-context').classList.toggle('hidden', !lead);
-  if (lead) {
-    const opener = lead.opener || '';
-    $('lead-opener').textContent = opener;
-    $('lead-opener').classList.toggle('hidden', !opener);
-    $('call-notes').value = lead.notes || '';
-  }
+  // Outgoing calls dock to the corner so the rest of the app (lead editor,
+  // notes, tabs) stays usable during the call. Incoming rings centered.
+  $('overlay').classList.toggle('docked', mode === 'outgoing');
   $('overlay').classList.remove('hidden');
 }
 
@@ -479,6 +475,7 @@ function endCallUi() {
     showOutcomeForm();
   } else {
     $('overlay').classList.add('hidden');
+    $('overlay').classList.remove('docked');
   }
   if (state.tab === 'recents') setTimeout(loadTab, 1500);
   // Tee up the next queued number so a cold-call run flows: end call → Call.
@@ -493,20 +490,30 @@ function endCallUi() {
 
 function showOutcomeForm() {
   state.outcome = null;
+  const lead = state.activeLead;
   $('call-status').textContent = 'Call ended — log the outcome';
   $('active-actions').classList.add('hidden');
   $('incoming-actions').classList.add('hidden');
   $('mini-pad').classList.add('hidden');
   $('speaker-menu').classList.add('hidden');
   $('outcome-box').classList.remove('hidden');
+  // Notes prefill: prefer what was typed in the lead's open editor during
+  // the call (auto-saved there), else the lead's stored notes.
+  const openEditor = document
+    .querySelector(`.lead-block[data-row="${lead._row}"] .lead-detail textarea`);
+  $('call-notes').value = openEditor ? openEditor.value : lead.notes || '';
+  $('lead-opener').classList.add('hidden');
+  $('lead-context').classList.remove('hidden');
   $('outcome-chips').querySelectorAll('button').forEach((b) => b.classList.remove('selected'));
   $('outcome-save').textContent = state.autoDial ? 'Save & call next' : 'Save';
+  $('overlay').classList.remove('docked');
   $('overlay').classList.remove('hidden');
 }
 
 function closeLeadOverlay() {
   state.activeLead = null;
   $('overlay').classList.add('hidden');
+  $('overlay').classList.remove('docked');
   $('lead-context').classList.add('hidden');
   $('call-sub').textContent = '';
   if (state.tab === 'leads') loadTab();
@@ -517,16 +524,28 @@ function leadPending(lead) {
 }
 
 async function callLead(lead) {
+  if (state.call) return toast('Already on a call');
   const v = validateNumber(lead.phone, state.dialCountry);
   if (!v.ok) return toast(`${lead.name}: invalid number (${lead.phone})`);
   state.activeLead = lead;
   showOverlay(lead.name || v.full, 'Calling…', 'outgoing');
+  expandLead(lead._row);
   try {
     await makeCall(v.full, true);
   } catch (e) {
     state.activeLead = null;
     toast(e.message);
     $('overlay').classList.add('hidden');
+    $('overlay').classList.remove('docked');
+  }
+}
+
+/* Open the lead's inline editor (if the Leads tab is showing) so notes can
+   be taken in it during the call. */
+function expandLead(row) {
+  const entry = state.leadBlocks && state.leadBlocks.get(row);
+  if (entry && !entry.block.querySelector('.lead-detail')) {
+    toggleLeadDetail(entry.block, entry.lead);
   }
 }
 
@@ -671,6 +690,8 @@ function fieldValue(v) {
 function buildLeadBlock(lead) {
   const block = document.createElement('div');
   block.className = 'lead-block';
+  block.dataset.row = lead._row;
+  if (state.leadBlocks) state.leadBlocks.set(lead._row, { block, lead });
 
   const row = document.createElement('div');
   row.className = 'row lead-row';
@@ -883,6 +904,11 @@ function addToQueue() {
 }
 
 async function makeCall(number, keepOverlay) {
+  if (state.call) {
+    toast('Already on a call');
+    if (keepOverlay) throw new Error('Already on a call');
+    return;
+  }
   let to = number;
   if (!to) {
     const v = validateNumber($('dial-input').value, state.dialCountry);
@@ -974,6 +1000,7 @@ async function loadTab() {
       }
       const pending = leads.filter(leadPending).length;
       $('autodial-btn').title = `${pending} pending lead${pending === 1 ? '' : 's'}`;
+      state.leadBlocks = new Map();
       for (const lead of leads) list.appendChild(buildLeadBlock(lead));
       lucide.createIcons();
     }
@@ -1116,6 +1143,7 @@ function wire() {
     state.call.accept();
     $('active-actions').classList.remove('hidden');
     $('incoming-actions').classList.add('hidden');
+    $('overlay').classList.add('docked');
     startTimer();
   });
   $('reject-btn').addEventListener('click', () => state.call?.reject());
