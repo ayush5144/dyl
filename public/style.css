@@ -353,6 +353,72 @@ input.invalid { border-color: var(--red); }
 .badge.bad { background: #fee2e2; color: #991b1b; }
 .lead-call { padding: 7px 9px; }
 .lead-call svg { width: 14px; height: 14px; }
+.lead-row .chev { width: 15px; height: 15px; color: var(--muted); flex-shrink: 0; transition: transform 0.15s; }
+.lead-block.open .chev { transform: rotate(180deg); }
+.lead-block.open .lead-row { background: #fafafa; }
+
+/* Expanded lead editor */
+.lead-detail {
+  border-bottom: 1px solid #f2f2f2;
+  background: #fcfcfc;
+  padding: 14px 16px 16px;
+}
+.lead-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 20px;
+  margin-bottom: 14px;
+}
+.lead-fields .field { min-width: 0; font-size: 12.5px; display: flex; flex-direction: column; gap: 1px; }
+.lead-fields .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+.lead-fields .v { overflow-wrap: break-word; line-height: 1.45; }
+.lead-fields a { color: #2563eb; text-decoration: none; }
+.lead-fields a:hover { text-decoration: underline; }
+
+.lead-edit { border-top: 1px solid var(--border); padding-top: 12px; }
+.edit-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+}
+.edit-field select, .edit-field input {
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text);
+  padding: 6px 9px;
+}
+.edit-field input { width: 190px; padding-right: 48px; }
+.edit-field .ghost {
+  position: absolute;
+  right: 4px;
+  bottom: 5px;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: normal;
+  padding: 3px 7px;
+}
+.lead-edit textarea {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 11px;
+  outline: none;
+  background: var(--card);
+}
+.lead-edit textarea:focus { border-color: #bdbdbd; }
+.save-state { display: block; font-size: 12px; color: var(--muted); margin-top: 6px; min-height: 15px; }
+.save-state.bad { color: var(--red); }
 
 .autodial {
   margin-left: auto;

@@ -629,6 +629,215 @@ function outcomeBadgeClass(lead) {
   return '';
 }
 
+/* ---------- Expandable lead editor ---------- */
+
+const STATUS_OPTIONS = ['', 'Not Called', 'Called', 'Callback', 'Do Not Call'];
+const OUTCOME_OPTIONS = ['', 'Answered', 'No Answer', 'Voicemail', 'Callback', 'Interested', 'Not Interested', 'Wrong Number'];
+
+function makeSelect(options, current) {
+  const sel = document.createElement('select');
+  const opts = options.includes(current) ? options : [...options, current];
+  for (const o of opts) {
+    const opt = document.createElement('option');
+    opt.value = o;
+    opt.textContent = o || '—';
+    sel.appendChild(opt);
+  }
+  sel.value = current;
+  return sel;
+}
+
+function fieldValue(v) {
+  const span = document.createElement('span');
+  span.className = 'v';
+  if (/^https?:\/\//i.test(v)) {
+    const a = document.createElement('a');
+    a.href = v;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = v.replace(/^https?:\/\/(www\.)?/i, '').slice(0, 45);
+    span.appendChild(a);
+  } else if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) {
+    const a = document.createElement('a');
+    a.href = 'mailto:' + v;
+    a.textContent = v;
+    span.appendChild(a);
+  } else {
+    span.textContent = v;
+  }
+  return span;
+}
+
+function buildLeadBlock(lead) {
+  const block = document.createElement('div');
+  block.className = 'lead-block';
+
+  const row = document.createElement('div');
+  row.className = 'row lead-row';
+  row.innerHTML = `
+    <div class="main">
+      <div class="title"></div>
+      <div class="sub"></div>
+    </div>
+    <span class="badge"></span>
+    <button class="icon-btn lead-call" title="Call now"><i data-lucide="phone"></i></button>
+    <i data-lucide="chevron-down" class="chev"></i>`;
+  row.querySelector('.title').textContent = lead.name || lead.phone;
+  row.querySelector('.sub').textContent =
+    [lead.title, lead.company, lead.phone].filter(Boolean).join(' · ');
+  const badgeEl = row.querySelector('.badge');
+  badgeEl.textContent = lead.outcome || lead.status || 'New';
+  badgeEl.classList.add(outcomeBadgeClass(lead) || 'neutral');
+
+  row.querySelector('.lead-call').addEventListener('click', (e) => {
+    e.stopPropagation();
+    callLead(lead);
+  });
+  row.addEventListener('click', () => toggleLeadDetail(block, lead));
+
+  block.appendChild(row);
+  return block;
+}
+
+function toggleLeadDetail(block, lead) {
+  const open = block.querySelector('.lead-detail');
+  if (open) {
+    open.remove();
+    block.classList.remove('open');
+    return;
+  }
+  // accordion: one open at a time
+  document.querySelectorAll('.lead-detail').forEach((d) => {
+    d.closest('.lead-block')?.classList.remove('open');
+    d.remove();
+  });
+  block.classList.add('open');
+  block.appendChild(buildLeadDetail(block, lead));
+  lucide.createIcons();
+  block.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+function buildLeadDetail(block, lead) {
+  const k = state.leadKeys;
+  const detail = document.createElement('div');
+  detail.className = 'lead-detail';
+
+  // Read-only columns (everything not shown in the row or editable below)
+  const shown = new Set([k.name, k.title, k.company, k.phone, k.status, k.outcome, k.notes, k.lastCalled]);
+  const fields = document.createElement('div');
+  fields.className = 'lead-fields';
+  for (const h of Object.keys(lead.raw)) {
+    if (h === '_row' || shown.has(h) || !String(lead.raw[h]).trim()) continue;
+    const f = document.createElement('div');
+    f.className = 'field';
+    const key = document.createElement('span');
+    key.className = 'k';
+    key.textContent = h;
+    f.append(key, fieldValue(String(lead.raw[h])));
+    fields.appendChild(f);
+  }
+  detail.appendChild(fields);
+
+  // Editable workflow fields — auto-saved
+  const edit = document.createElement('div');
+  edit.className = 'lead-edit';
+
+  const statusSel = makeSelect(STATUS_OPTIONS, lead.status);
+  const outcomeSel = makeSelect(OUTCOME_OPTIONS, lead.outcome);
+  const lastInput = document.createElement('input');
+  lastInput.type = 'text';
+  lastInput.value = lead.raw[k.lastCalled] || '';
+  lastInput.placeholder = 'Last called';
+  const nowBtn = document.createElement('button');
+  nowBtn.className = 'ghost';
+  nowBtn.textContent = 'Now';
+  const notes = document.createElement('textarea');
+  notes.rows = 3;
+  notes.placeholder = 'Notes…';
+  notes.value = lead.notes || '';
+  const saveState = document.createElement('span');
+  saveState.className = 'save-state';
+
+  const labeled = (text, el, extra) => {
+    const l = document.createElement('label');
+    l.className = 'edit-field';
+    const s = document.createElement('span');
+    s.textContent = text;
+    l.append(s, el);
+    if (extra) l.appendChild(extra);
+    return l;
+  };
+  const controls = document.createElement('div');
+  controls.className = 'edit-row';
+  controls.append(
+    labeled('Status', statusSel),
+    labeled('Outcome', outcomeSel),
+    labeled('Last called', lastInput, nowBtn)
+  );
+  edit.append(controls, notes, saveState);
+  detail.appendChild(edit);
+
+  let timer = null;
+  const save = async () => {
+    clearTimeout(timer);
+    saveState.textContent = 'Saving…';
+    saveState.classList.remove('bad');
+    const updates = {
+      [k.status]: statusSel.value,
+      [k.outcome]: outcomeSel.value,
+      [k.notes]: notes.value.trim(),
+      [k.lastCalled]: lastInput.value.trim()
+    };
+    try {
+      await api('/lead-update', { method: 'POST', body: { row: lead._row, updates } });
+      lead.status = statusSel.value;
+      lead.outcome = outcomeSel.value;
+      lead.notes = notes.value.trim();
+      lead.raw[k.lastCalled] = lastInput.value.trim();
+      const badgeEl = block.querySelector('.badge');
+      badgeEl.textContent = lead.outcome || lead.status || 'New';
+      badgeEl.className = 'badge ' + (outcomeBadgeClass(lead) || 'neutral');
+      saveState.textContent = 'Saved ✓';
+      setTimeout(() => {
+        if (saveState.textContent === 'Saved ✓') saveState.textContent = '';
+      }, 2500);
+    } catch (e) {
+      saveState.textContent = 'Not saved: ' + e.message;
+      saveState.classList.add('bad');
+    }
+  };
+  const debouncedSave = () => {
+    clearTimeout(timer);
+    saveState.textContent = 'Typing…';
+    timer = setTimeout(save, 1200);
+  };
+
+  const onPick = () => {
+    // picking a status/outcome stamps "last called" if it's still empty
+    if ((statusSel.value || outcomeSel.value) && !lastInput.value.trim()) {
+      lastInput.value = new Date().toLocaleString();
+    }
+    save();
+  };
+  statusSel.addEventListener('change', onPick);
+  outcomeSel.addEventListener('change', onPick);
+  lastInput.addEventListener('input', debouncedSave);
+  nowBtn.addEventListener('click', () => {
+    lastInput.value = new Date().toLocaleString();
+    save();
+  });
+  notes.addEventListener('input', debouncedSave);
+  notes.addEventListener('blur', () => {
+    if (timer) save();
+  });
+
+  if (!state.leadsWritable) {
+    edit.querySelectorAll('select, input, textarea, button').forEach((el) => (el.disabled = true));
+    saveState.textContent = 'Read-only — connect the Apps Script URL in settings to edit';
+  }
+  return detail;
+}
+
 /* ---------- Dial queue ---------- */
 
 function saveQueue() {
@@ -721,7 +930,6 @@ function row(icon, iconCls, title, sub, meta, onClick) {
 function setNumberInDialer(num) {
   $('dial-input').value = num;
   updateDialValidity();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function loadTab() {
@@ -766,30 +974,7 @@ async function loadTab() {
       }
       const pending = leads.filter(leadPending).length;
       $('autodial-btn').title = `${pending} pending lead${pending === 1 ? '' : 's'}`;
-      for (const lead of leads) {
-        const div = document.createElement('div');
-        div.className = 'row lead-row';
-        const badge = lead.outcome || lead.status || 'New';
-        div.innerHTML = `
-          <div class="main">
-            <div class="title"></div>
-            <div class="sub"></div>
-          </div>
-          <span class="badge"></span>
-          <button class="icon-btn lead-call" title="Call now"><i data-lucide="phone"></i></button>`;
-        div.querySelector('.title').textContent = lead.name || lead.phone;
-        div.querySelector('.sub').textContent =
-          [lead.title, lead.company, lead.phone].filter(Boolean).join(' · ');
-        const badgeEl = div.querySelector('.badge');
-        badgeEl.textContent = badge;
-        badgeEl.classList.add(outcomeBadgeClass(lead) || 'neutral');
-        div.addEventListener('click', () => setNumberInDialer(lead.phone));
-        div.querySelector('.lead-call').addEventListener('click', (e) => {
-          e.stopPropagation();
-          callLead(lead);
-        });
-        list.appendChild(div);
-      }
+      for (const lead of leads) list.appendChild(buildLeadBlock(lead));
       lucide.createIcons();
     }
   } catch (e) {
