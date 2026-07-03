@@ -345,6 +345,37 @@ app.get(
 );
 
 app.post(
+  '/api/lead-add',
+  wrap(async (req, res) => {
+    const cfg = loadConfig();
+    if (!cfg.appsScriptUrl) {
+      return res.status(400).json({ error: 'Adding leads needs the Apps Script connection (see settings)' });
+    }
+    const { updates } = req.body;
+    if (!updates || typeof updates !== 'object') {
+      return res.status(400).json({ error: 'updates is required' });
+    }
+    const r = await fetch(cfg.appsScriptUrl, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ append: true, updates })
+    });
+    const text = await r.text();
+    if (text.trimStart().startsWith('<')) {
+      throw new Error('Apps Script rejected the request — update Code.gs and deploy a new version.');
+    }
+    const data = JSON.parse(text);
+    if (data.error) {
+      throw new Error(
+        `${data.error} — if your sheet's script predates lead-adding, paste the latest appsscript/Code.gs and deploy a new version.`
+      );
+    }
+    res.json({ ok: true, row: data.row });
+  })
+);
+
+app.post(
   '/api/lead-update',
   wrap(async (req, res) => {
     const cfg = loadConfig();

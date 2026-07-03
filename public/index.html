@@ -59,7 +59,6 @@
         <button class="tab active" data-tab="recents">Recents</button>
         <button class="tab" data-tab="messages">Messages</button>
         <button class="tab" data-tab="leads">Leads</button>
-        <button id="autodial-btn" class="ghost autodial hidden"><i data-lucide="play"></i>Auto-dial</button>
         <button class="icon-btn refresh" id="refresh-btn" title="Refresh"><i data-lucide="refresh-cw"></i></button>
       </nav>
       <div id="list" class="list"></div>
@@ -83,6 +82,7 @@
         <textarea id="call-notes" placeholder="Notes…" rows="3"></textarea>
       </div>
       <div class="outcome hidden" id="outcome-box">
+        <input id="outcome-name" class="hidden" type="text" placeholder="Name (optional)" autocomplete="off" />
         <div class="chips" id="outcome-chips">
           <button data-outcome="Interested">Interested</button>
           <button data-outcome="Callback">Callback</button>

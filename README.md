@@ -52,8 +52,10 @@ Two ways to connect, set in settings:
 ### Apps Script URL (recommended — two-way sync)
 
 Read *and* write: call outcomes, notes, status, and last-called timestamps are written
-back to your sheet. Also powers **auto-dial** (dial pending leads one after another,
-log each outcome between calls) and shows each lead's opener script during the call.
+back to your sheet. Click a lead to expand its inline editor (auto-saves as you type,
+with a manual Save button too). Calling a lead expands its editor so you can take notes
+mid-call; after hangup, an outcome form saves everything back. Calls to numbers *not*
+in your list get the same form and are appended to the sheet as new rows.
 
 Setup (one time, ~2 minutes):
 
@@ -65,6 +67,10 @@ Setup (one time, ~2 minutes):
 
 Header rows are auto-detected (title banners above the table are fine). Missing
 workflow columns (Status / Outcome / Notes / Last Called) are created automatically.
+
+**Updating the script later** (e.g. after pulling a newer Code.gs): paste the new code
+over the old one, then **Deploy → Manage deployments → ✏️ edit → Version: New version →
+Deploy**. The /exec URL stays the same, so dyl needs no settings change.
 
 ### Sheet URL (read-only fallback)
 

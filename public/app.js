@@ -275,7 +275,7 @@ const state = {
   leadKeys: null,
   leadsWritable: false,
   activeLead: null, // lead being called; triggers the outcome form on hangup
-  autoDial: false,
+  manualCall: null, // non-lead call; offers saving as a new sheet row
   outcome: null
 };
 
@@ -471,9 +471,10 @@ function endCallUi() {
   state.call = null;
   state.muted = false;
   $('mute-btn').classList.remove('active');
-  if (state.activeLead) {
+  if (state.activeLead || (state.manualCall && state.cfg?.appsScriptUrl)) {
     showOutcomeForm();
   } else {
+    state.manualCall = null;
     $('overlay').classList.add('hidden');
     $('overlay').classList.remove('docked');
   }
@@ -491,36 +492,43 @@ function endCallUi() {
 function showOutcomeForm() {
   state.outcome = null;
   const lead = state.activeLead;
-  $('call-status').textContent = 'Call ended — log the outcome';
+  $('call-status').textContent = lead
+    ? 'Call ended — log the outcome'
+    : 'Call ended — save to your sheet?';
   $('active-actions').classList.add('hidden');
   $('incoming-actions').classList.add('hidden');
   $('mini-pad').classList.add('hidden');
   $('speaker-menu').classList.add('hidden');
   $('outcome-box').classList.remove('hidden');
-  // Notes prefill: prefer what was typed in the lead's open editor during
-  // the call (auto-saved there), else the lead's stored notes.
-  const openEditor = document
-    .querySelector(`.lead-block[data-row="${lead._row}"] .lead-detail textarea`);
-  $('call-notes').value = openEditor ? openEditor.value : lead.notes || '';
+  if (lead) {
+    // Notes prefill: prefer what was typed in the lead's open editor during
+    // the call (auto-saved there), else the lead's stored notes.
+    const openEditor = document
+      .querySelector(`.lead-block[data-row="${lead._row}"] .lead-detail textarea`);
+    $('call-notes').value = openEditor ? openEditor.value : lead.notes || '';
+  } else {
+    // Unknown number: offer to append it to the sheet as a new lead
+    $('call-notes').value = '';
+    $('outcome-name').value = '';
+  }
+  $('outcome-name').classList.toggle('hidden', !!lead);
   $('lead-opener').classList.add('hidden');
   $('lead-context').classList.remove('hidden');
   $('outcome-chips').querySelectorAll('button').forEach((b) => b.classList.remove('selected'));
-  $('outcome-save').textContent = state.autoDial ? 'Save & call next' : 'Save';
+  $('outcome-save').textContent = lead ? 'Save' : 'Add to sheet';
+  $('outcome-skip').textContent = lead ? 'Skip' : "Don't save";
   $('overlay').classList.remove('docked');
   $('overlay').classList.remove('hidden');
 }
 
 function closeLeadOverlay() {
   state.activeLead = null;
+  state.manualCall = null;
   $('overlay').classList.add('hidden');
   $('overlay').classList.remove('docked');
   $('lead-context').classList.add('hidden');
   $('call-sub').textContent = '';
   if (state.tab === 'leads') loadTab();
-}
-
-function leadPending(lead) {
-  return !lead.status || /^not called$/i.test(lead.status);
 }
 
 async function callLead(lead) {
@@ -551,55 +559,33 @@ function expandLead(row) {
 
 async function saveOutcome() {
   const lead = state.activeLead;
-  if (!lead) return;
-  const k = state.leadKeys;
-  const updates = {
-    [k.status]: 'Called',
-    [k.lastCalled]: new Date().toLocaleString(),
-    [k.notes]: $('call-notes').value.trim()
-  };
-  if (state.outcome) updates[k.outcome] = state.outcome;
+  const manual = state.manualCall;
+  if (!lead && !manual) return;
   const btn = $('outcome-save');
   btn.disabled = true;
   try {
-    await api('/lead-update', { method: 'POST', body: { row: lead._row, updates } });
+    if (!state.leadKeys) await fetchLeads();
+    const k = state.leadKeys;
+    const updates = {
+      [k.status]: 'Called',
+      [k.lastCalled]: new Date().toLocaleString(),
+      [k.notes]: $('call-notes').value.trim()
+    };
+    if (state.outcome) updates[k.outcome] = state.outcome;
+    if (lead) {
+      await api('/lead-update', { method: 'POST', body: { row: lead._row, updates } });
+    } else {
+      if (k.phone) updates[k.phone] = manual.phone;
+      const name = $('outcome-name').value.trim();
+      if (name) updates[k.name] = name;
+      await api('/lead-add', { method: 'POST', body: { updates } });
+    }
     closeLeadOverlay();
-    if (state.autoDial) dialNextLead();
   } catch (e) {
     $('call-status').textContent = e.message;
   } finally {
     btn.disabled = false;
   }
-}
-
-async function dialNextLead() {
-  try {
-    const next = (await fetchLeads()).find(leadPending);
-    if (!next) {
-      stopAutoDial();
-      toast('No pending leads left 🎉');
-      return;
-    }
-    callLead(next);
-  } catch (e) {
-    stopAutoDial();
-    toast(e.message);
-  }
-}
-
-function startAutoDial() {
-  state.autoDial = true;
-  $('autodial-btn').innerHTML = '<i data-lucide="square"></i>Stop auto-dial';
-  $('autodial-btn').classList.add('running');
-  lucide.createIcons();
-  dialNextLead();
-}
-
-function stopAutoDial() {
-  state.autoDial = false;
-  $('autodial-btn').innerHTML = '<i data-lucide="play"></i>Auto-dial';
-  $('autodial-btn').classList.remove('running');
-  lucide.createIcons();
 }
 
 /* Normalize sheet rows into lead objects using detected column names. */
@@ -778,6 +764,9 @@ function buildLeadDetail(block, lead) {
   notes.value = lead.notes || '';
   const saveState = document.createElement('span');
   saveState.className = 'save-state';
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'ghost save-now';
+  saveBtn.textContent = 'Save';
 
   const labeled = (text, el, extra) => {
     const l = document.createElement('label');
@@ -795,7 +784,10 @@ function buildLeadDetail(block, lead) {
     labeled('Outcome', outcomeSel),
     labeled('Last called', lastInput, nowBtn)
   );
-  edit.append(controls, notes, saveState);
+  const saveRow = document.createElement('div');
+  saveRow.className = 'save-row';
+  saveRow.append(saveState, saveBtn);
+  edit.append(controls, notes, saveRow);
   detail.appendChild(edit);
 
   let timer = null;
@@ -851,6 +843,7 @@ function buildLeadDetail(block, lead) {
   notes.addEventListener('blur', () => {
     if (timer) save();
   });
+  saveBtn.addEventListener('click', save);
 
   if (!state.leadsWritable) {
     edit.querySelectorAll('select, input, textarea, button').forEach((el) => (el.disabled = true));
@@ -922,6 +915,7 @@ async function makeCall(number, keepOverlay) {
   }
   if (!keepOverlay) {
     state.activeLead = null;
+    state.manualCall = { phone: to };
     showOverlay(to, 'Calling…', 'outgoing');
   }
   const call = await state.device.connect({
@@ -998,8 +992,6 @@ async function loadTab() {
           '<div class="empty">No leads. Connect your sheet in settings (Apps Script URL for two-way sync).</div>';
         return;
       }
-      const pending = leads.filter(leadPending).length;
-      $('autodial-btn').title = `${pending} pending lead${pending === 1 ? '' : 's'}`;
       state.leadBlocks = new Map();
       for (const lead of leads) list.appendChild(buildLeadBlock(lead));
       lucide.createIcons();
@@ -1141,6 +1133,9 @@ function wire() {
   $('accept-btn').addEventListener('click', () => {
     if (!state.call) return;
     state.call.accept();
+    // accepted incoming calls can be logged to the sheet too
+    const from = (state.call.parameters && state.call.parameters.From) || '';
+    state.manualCall = from ? { phone: from } : null;
     $('active-actions').classList.remove('hidden');
     $('incoming-actions').classList.add('hidden');
     $('overlay').classList.add('docked');
@@ -1153,17 +1148,11 @@ function wire() {
       document.querySelectorAll('.tab').forEach((x) => x.classList.remove('active'));
       t.classList.add('active');
       state.tab = t.dataset.tab;
-      $('autodial-btn').classList.toggle('hidden', state.tab !== 'leads');
       loadTab();
     })
   );
   $('refresh-btn').addEventListener('click', loadTab);
 
-  $('autodial-btn').addEventListener('click', () => {
-    if (state.autoDial) stopAutoDial();
-    else if (state.call || state.activeLead) toast('Finish the current call first');
-    else startAutoDial();
-  });
   $('outcome-chips').addEventListener('click', (e) => {
     const btn = e.target.closest('button');
     if (!btn) return;
@@ -1173,13 +1162,7 @@ function wire() {
     if (!already) btn.classList.add('selected');
   });
   $('outcome-save').addEventListener('click', saveOutcome);
-  $('outcome-skip').addEventListener('click', () => {
-    if (state.autoDial) {
-      stopAutoDial();
-      toast('Auto-dial stopped (lead skipped without saving)');
-    }
-    closeLeadOverlay();
-  });
+  $('outcome-skip').addEventListener('click', closeLeadOverlay);
 
   $('settings-btn').addEventListener('click', openSettings);
   $('cfg-save').addEventListener('click', saveSettings);

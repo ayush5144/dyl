@@ -420,23 +420,25 @@ input.invalid { border-color: var(--red); }
   background: var(--card);
 }
 .lead-edit textarea:focus { border-color: #bdbdbd; }
-.save-state { display: block; font-size: 12px; color: var(--muted); margin-top: 6px; min-height: 15px; }
-.save-state.bad { color: var(--red); }
-
-.autodial {
-  margin-left: auto;
-  font-weight: 600;
-  border: 1px solid var(--border);
-  display: inline-flex;
+.save-row {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
 }
-.autodial svg { width: 13px; height: 13px; stroke-width: 2; }
-.autodial.running { background: #111; color: #fff; border-color: #111; }
-.autodial.running:hover { background: #111; }
-.tabs .refresh { margin-left: 4px; }
-.autodial.hidden + .refresh { margin-left: auto; }
+.save-state { font-size: 12px; color: var(--muted); min-height: 15px; }
+.save-state.bad { color: var(--red); }
+.save-now { border: 1px solid var(--border); font-size: 12px; }
+
+#outcome-name {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto 12px;
+  font-size: 13px;
+}
+
 
 .empty {
   color: var(--muted);

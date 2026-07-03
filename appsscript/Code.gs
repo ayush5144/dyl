@@ -9,6 +9,7 @@
  *        header row; the header row is found by its "Name" column).
  * POST → { row: <sheet row number>, updates: { "Column Name": value } }
  *        writes cell values; creates missing columns automatically.
+ *        { append: true, updates: {...} } appends a new lead row instead.
  */
 
 function findHeader_(sh) {
@@ -71,6 +72,14 @@ function doPost(e) {
   var sh = leadSheet_();
   if (!sh) return json_({ error: 'No sheet with a Name + phone header row found' });
   var h = findHeader_(sh);
+  if (body.append) {
+    var updates0 = body.updates || {};
+    var newRow = h.headers.map(function (hd) {
+      return updates0[hd] !== undefined ? updates0[hd] : '';
+    });
+    sh.appendRow(newRow);
+    return json_({ ok: true, row: sh.getLastRow() });
+  }
   var row = Number(body.row);
   if (!row || row <= h.row || row > sh.getLastRow()) {
     return json_({ error: 'Invalid row: ' + body.row });
