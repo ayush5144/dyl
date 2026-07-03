@@ -20,6 +20,16 @@ function saveConfig(cfg) {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2));
 }
 
+// The web-app URL must be the /exec deployment link, not the script editor
+// link — pasting the wrong one is an easy mistake that fails confusingly.
+function checkAppsScriptUrl(url) {
+  if (url && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url)) {
+    throw new Error(
+      'That looks like the Apps Script editor link. Use the Web app URL ending in /exec (Deploy → Manage deployments).'
+    );
+  }
+}
+
 function isConfigured(cfg) {
   return !!(cfg.accountSid && cfg.authToken && cfg.apiKeySid && cfg.apiKeySecret && cfg.twimlAppSid);
 }
@@ -141,7 +151,10 @@ app.post(
     cfg.accountSid = accountSid.trim();
     cfg.authToken = authToken.trim();
     if (sheetUrl !== undefined) cfg.sheetUrl = sheetUrl.trim();
-    if (req.body.appsScriptUrl !== undefined) cfg.appsScriptUrl = req.body.appsScriptUrl.trim();
+    if (req.body.appsScriptUrl !== undefined) {
+      checkAppsScriptUrl(req.body.appsScriptUrl.trim());
+      cfg.appsScriptUrl = req.body.appsScriptUrl.trim();
+    }
     await ensureSetup(cfg);
     await refreshNumbers(cfg);
     saveConfig(cfg);
@@ -154,7 +167,10 @@ app.post(
   wrap(async (req, res) => {
     const cfg = loadConfig();
     if (req.body.sheetUrl !== undefined) cfg.sheetUrl = req.body.sheetUrl.trim();
-    if (req.body.appsScriptUrl !== undefined) cfg.appsScriptUrl = req.body.appsScriptUrl.trim();
+    if (req.body.appsScriptUrl !== undefined) {
+      checkAppsScriptUrl(req.body.appsScriptUrl.trim());
+      cfg.appsScriptUrl = req.body.appsScriptUrl.trim();
+    }
     saveConfig(cfg);
     res.json(publicConfig(cfg));
   })

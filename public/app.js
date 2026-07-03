@@ -803,7 +803,12 @@ async function loadTab() {
 
 /* ---------- Settings ---------- */
 
-function openSettings() {
+async function openSettings() {
+  // Always show the currently saved values, not this tab's possibly stale
+  // copy — otherwise re-saving can silently revert someone else's update.
+  try {
+    state.cfg = await api('/config');
+  } catch {}
   $('cfg-sheet').value = state.cfg?.sheetUrl || '';
   $('cfg-appsscript').value = state.cfg?.appsScriptUrl || '';
   $('cfg-incoming').checked = !!state.cfg?.incomingEnabled;
