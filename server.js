@@ -65,6 +65,22 @@ async function refreshNumbers(cfg) {
 }
 
 // ---- Google Sheet leads ----
+
+// Apps Script occasionally returns a transient HTML error page; retry once
+// before giving up.
+async function fetchAppsScript(cfg, opts, failHint) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const r = await fetch(cfg.appsScriptUrl, { redirect: 'follow', ...opts });
+    const text = await r.text();
+    if (!text.trimStart().startsWith('<')) {
+      const data = JSON.parse(text);
+      if (data.error) throw new Error(data.error + (failHint || ''));
+      return data;
+    }
+    if (attempt === 0) await new Promise((res) => setTimeout(res, 1200));
+  }
+  throw new Error('Apps Script did not return JSON — check the URL is the /exec deployment with access "Anyone".');
+}
 function toCsvUrl(url) {
   const m = url.match(/docs\.google\.com\/spreadsheets\/d\/([\w-]+)/);
   if (!m) return url; // assume it's already a CSV link
@@ -322,13 +338,7 @@ app.get(
   wrap(async (req, res) => {
     const cfg = loadConfig();
     if (cfg.appsScriptUrl) {
-      const r = await fetch(cfg.appsScriptUrl, { redirect: 'follow' });
-      const text = await r.text();
-      if (text.trimStart().startsWith('<')) {
-        throw new Error('Apps Script URL did not return JSON — redeploy with access set to "Anyone".');
-      }
-      const data = JSON.parse(text);
-      if (data.error) throw new Error(data.error);
+      const data = await fetchAppsScript(cfg);
       return res.json({ leads: data.leads, headers: data.headers, writable: true });
     }
     if (!cfg.sheetUrl) return res.json({ leads: [], headers: [], writable: false });
@@ -366,22 +376,15 @@ app.post(
     if (!updates || typeof updates !== 'object') {
       return res.status(400).json({ error: 'updates is required' });
     }
-    const r = await fetch(cfg.appsScriptUrl, {
-      method: 'POST',
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ append: true, updates })
-    });
-    const text = await r.text();
-    if (text.trimStart().startsWith('<')) {
-      throw new Error('Apps Script rejected the request — update Code.gs and deploy a new version.');
-    }
-    const data = JSON.parse(text);
-    if (data.error) {
-      throw new Error(
-        `${data.error} — if your sheet's script predates lead-adding, paste the latest appsscript/Code.gs and deploy a new version.`
-      );
-    }
+    const data = await fetchAppsScript(
+      cfg,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ append: true, updates })
+      },
+      " — if your sheet's script predates lead-adding, paste the latest appsscript/Code.gs and deploy a new version."
+    );
     res.json({ ok: true, row: data.row });
   })
 );
@@ -397,18 +400,11 @@ app.post(
     if (!row || !updates || typeof updates !== 'object') {
       return res.status(400).json({ error: 'row and updates are required' });
     }
-    const r = await fetch(cfg.appsScriptUrl, {
+    await fetchAppsScript(cfg, {
       method: 'POST',
-      redirect: 'follow',
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ row, updates })
     });
-    const text = await r.text();
-    if (text.trimStart().startsWith('<')) {
-      throw new Error('Apps Script rejected the update — redeploy with access set to "Anyone".');
-    }
-    const data = JSON.parse(text);
-    if (data.error) throw new Error(data.error);
     res.json({ ok: true });
   })
 );

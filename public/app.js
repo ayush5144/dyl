@@ -626,8 +626,9 @@ async function fetchLeads() {
   state.leadsWritable = !!writable;
   state.leadKeys = detectLeadKeys(headers || []);
   const k = state.leadKeys;
-  state.leads = (leads || []).map((raw) => ({
+  state.leads = (leads || []).map((raw, i) => ({
     _row: raw._row,
+    index: i + 1,
     raw,
     name: raw[k.name] || '',
     phone: k.phone ? raw[k.phone] || '' : '',
@@ -698,6 +699,7 @@ function buildLeadBlock(lead) {
   const row = document.createElement('div');
   row.className = 'row lead-row';
   row.innerHTML = `
+    <span class="lead-num"></span>
     <div class="main">
       <div class="title"></div>
       <div class="sub"></div>
@@ -705,6 +707,7 @@ function buildLeadBlock(lead) {
     <span class="badge"></span>
     <button class="icon-btn lead-call" title="Call now"><i data-lucide="phone"></i></button>
     <i data-lucide="chevron-down" class="chev"></i>`;
+  row.querySelector('.lead-num').textContent = lead.index;
   row.querySelector('.title').textContent = lead.name || lead.phone;
   row.querySelector('.sub').textContent =
     [lead.title, lead.company, lead.phone].filter(Boolean).join(' · ');
